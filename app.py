@@ -1,17 +1,14 @@
 
 import os
-
 import streamlit as st
 from openai import OpenAI
 
-
 # --------------------------------------------------
-# APP CONFIGURATION
+# PAGE CONFIGURATION
 # --------------------------------------------------
-
 st.set_page_config(
     page_title="CodePilot AI",
-    page_icon="💻",
+    page_icon="🚀",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -20,196 +17,186 @@ MODEL = "openai/gpt-oss-120b"
 
 LANGUAGES = ["Python", "Java", "C", "C++", "JavaScript"]
 
-EXAMPLES = {
-    "Python": """def factorial(n):
+ACE_LANGUAGES = {
+    "Python": "python",
+    "Java": "java",
+    "C": "c_cpp",
+    "C++": "c_cpp",
+    "JavaScript": "javascript",
+}
+
+SAMPLE_CODE = {
+    "Python": '''def factorial(n):
     if n <= 1:
         return 1
     return n * factorial(n - 1)
 
-number = 5
-print(factorial(number))""",
+print(factorial(5))''',
 
-    "Java": """public class Main {
-    static int square(int n) {
-        return n * n;
+    "Java": '''public class Main {
+    static int factorial(int n) {
+        if (n <= 1) {
+            return 1;
+        }
+        return n * factorial(n - 1);
     }
 
     public static void main(String[] args) {
-        System.out.println(square(5));
+        System.out.println(factorial(5));
     }
-}""",
+}''',
 
-    "C": """#include <stdio.h>
+    "C": '''#include <stdio.h>
 
-int main() {
-    int numbers[] = {10, 20, 30};
-    int sum = 0;
-
-    for (int i = 0; i < 3; i++) {
-        sum += numbers[i];
+int factorial(int n) {
+    if (n <= 1) {
+        return 1;
     }
+    return n * factorial(n - 1);
+}
 
-    printf("Sum: %d\\n", sum);
+int main(void) {
+    printf("%d\\n", factorial(5));
     return 0;
-}""",
+}''',
 
-    "C++": """#include <iostream>
+    "C++": '''#include <iostream>
 using namespace std;
 
-int main() {
-    int number = 7;
-
-    if (number % 2 == 0) {
-        cout << "Even";
-    } else {
-        cout << "Odd";
+int factorial(int n) {
+    if (n <= 1) {
+        return 1;
     }
+    return n * factorial(n - 1);
+}
 
+int main() {
+    cout << factorial(5) << endl;
     return 0;
-}""",
+}''',
 
-    "JavaScript": """const numbers = [1, 2, 3, 4, 5];
+    "JavaScript": '''function factorial(n) {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
 
-const squares = numbers.map((number) => {
-    return number * number;
-});
-
-console.log(squares);""",
+console.log(factorial(5));''',
 }
 
 # --------------------------------------------------
-# STYLING
+# API KEY
 # --------------------------------------------------
+def get_api_key():
+    try:
+        key = st.secrets.get("GROQ_API_KEY", "")
+    except Exception:
+        key = ""
 
+    return key or os.getenv("GROQ_API_KEY", "")
+
+
+def clear_editor(key):
+    """Clear the selected editor before Streamlit reruns the page."""
+    st.session_state[key] = ""
+
+
+# --------------------------------------------------
+# CUSTOM STYLING
+# --------------------------------------------------
 st.markdown(
     """
     <style>
     .stApp {
-        background: #0b1020;
-        color: #eef2ff;
+        background-color: #0b1020;
     }
 
-    [data-testid="stSidebar"] {
-        background: #10172a;
-        border-right: 1px solid #25304a;
+    .block-container {
+        max-width: 1250px;
+        padding-top: 2rem;
+        padding-bottom: 3rem;
     }
 
     .hero {
-        padding: 30px 8px 22px 8px;
+        padding: 1.8rem 0 1.2rem 0;
     }
 
     .hero h1 {
-        font-size: clamp(2rem, 4vw, 3.2rem);
+        font-size: clamp(2.2rem, 5vw, 3.6rem);
         font-weight: 800;
         letter-spacing: -1.5px;
-        margin-bottom: 10px;
-        color: #f4f6ff;
+        margin-bottom: 0.6rem;
     }
 
     .hero p {
-        font-size: 1.05rem;
-        color: #a6b2cc;
+        color: #aab5ce;
+        font-size: 1.08rem;
+        line-height: 1.7;
+        max-width: 760px;
     }
 
-    .status-pill {
-        display: inline-block;
-        border: 1px solid #34405e;
-        background: #151e35;
-        color: #b9c6ff;
-        padding: 6px 12px;
-        border-radius: 30px;
-        font-size: 0.82rem;
-        margin-bottom: 14px;
+    .gradient-text {
+        background: linear-gradient(90deg, #7c83ff, #42d6c5);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }
 
     .feature-card {
-        background: linear-gradient(135deg, #141d34, #11182a);
-        border: 1px solid #273450;
-        border-radius: 15px;
+        background: #121a2d;
+        border: 1px solid #27334c;
+        border-radius: 14px;
         padding: 18px;
         min-height: 125px;
+        margin-bottom: 12px;
     }
 
     .feature-card h3 {
         font-size: 1rem;
+        color: #f1f5ff;
         margin: 0 0 8px 0;
-        color: #e5eaff;
     }
 
     .feature-card p {
-        color: #a6b2cc;
         font-size: 0.88rem;
+        color: #aab5ce;
         margin: 0;
+        line-height: 1.5;
     }
 
-    .section-title {
-        font-size: 1.2rem;
+    .section-label {
+        color: #b6c3dd;
+        font-size: 0.83rem;
         font-weight: 700;
-        margin: 18px 0 10px 0;
-        color: #eef2ff;
-    }
-
-    .stTextArea textarea {
-        background: #0d1425 !important;
-        color: #e6edff !important;
-        border: 1px solid #303d5a !important;
-        border-radius: 12px !important;
-        font-family: Consolas, monospace !important;
-    }
-
-    .stButton > button {
-        border-radius: 10px;
-        min-height: 43px;
-        font-weight: 600;
-        border: 1px solid #394766;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
     }
 
     .stButton > button[kind="primary"] {
-        background: linear-gradient(90deg, #6257e8, #3977ed);
         border: none;
-        color: white;
-    }
-
-    .result-card {
-        background: #111a2e;
-        border: 1px solid #293754;
-        border-radius: 14px;
-        padding: 20px;
+        border-radius: 10px;
+        min-height: 3rem;
+        font-weight: 700;
     }
 
     div[data-testid="stDownloadButton"] button {
-        border-radius: 10px;
+        border-radius: 9px;
     }
 
+    footer {
+        visibility: hidden;
+    }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
 # --------------------------------------------------
-# API KEY
-# --------------------------------------------------
-
-def get_api_key():
-    """Read the key from Streamlit Secrets or an environment variable."""
-    try:
-        key = st.secrets.get("GROQ_API_KEY", "")
-        if key:
-            return key
-    except Exception:
-        pass
-
-    return os.getenv("GROQ_API_KEY", "")
-
-
-# --------------------------------------------------
 # SIDEBAR
 # --------------------------------------------------
-
 with st.sidebar:
-    st.markdown("## 💻 CodePilot AI")
-    st.caption("Your personal coding companion")
-
+    st.markdown("## 🚀 CodePilot AI")
+    st.caption("Your AI-powered coding companion")
     st.divider()
 
     st.markdown("### ⚙️ Preferences")
@@ -226,35 +213,35 @@ with st.sidebar:
             "Beginner",
             "Intermediate",
             "Advanced",
-            "Interview Preparation",
         ],
         index=0,
     )
 
     st.divider()
 
-    st.markdown("### ✨ What you can do")
-    st.markdown(
-        """
-        - Understand code step by step
-        - Learn programming concepts
-        - Explore examples and outputs
-        - Prepare for coding interviews
-        """
-    )
+    st.markdown("### 💡 Editor tips")
+    st.caption("• Select a language to load its sample code.")
+    st.caption("• Edit the sample or paste your own code.")
+    st.caption("• Use Tab to indent your code.")
+    st.caption("• Click Explain my code when ready.")
+
+    st.divider()
+    st.caption("Powered by Groq")
+
 
 # --------------------------------------------------
-# MAIN HEADER
+# HERO
 # --------------------------------------------------
-
 st.markdown(
     """
     <div class="hero">
-        <div class="status-pill">● AI-powered code explanations</div>
-        <h1>Understand code.<br>One step at a time.</h1>
+        <h1>Understand code with
+        <span class="gradient-text">CodePilot AI</span></h1>
         <p>
-            Paste your code, choose your learning level,
-            and turn complex logic into clear explanations.
+            Explore code line by line with AI-powered explanations.
+            Write or paste code in a professional editor, choose your
+            learning level, and make complex programming concepts easier
+            to understand.
         </p>
     </div>
     """,
@@ -264,15 +251,15 @@ st.markdown(
 # --------------------------------------------------
 # FEATURE CARDS
 # --------------------------------------------------
-
 col1, col2, col3 = st.columns(3)
 
 with col1:
     st.markdown(
         """
         <div class="feature-card">
-            <h3>🧩 Step-by-step</h3>
-            <p>Break complicated code into understandable steps.</p>
+            <h3>⌨️ Code editor</h3>
+            <p>A reliable editor for writing or pasting code
+            in your selected programming language.</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -282,8 +269,9 @@ with col2:
     st.markdown(
         """
         <div class="feature-card">
-            <h3>🎯 Learn your way</h3>
-            <p>Choose an explanation level that fits your experience.</p>
+            <h3>🧠 AI explanations</h3>
+            <p>Understand program flow, functions,
+            logic and important programming concepts.</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -293,178 +281,174 @@ with col3:
     st.markdown(
         """
         <div class="feature-card">
-            <h3>📘 Learn by example</h3>
-            <p>Explore logic, important concepts, and expected output.</p>
+            <h3>🎯 Learn your way</h3>
+            <p>Choose beginner, intermediate or advanced
+            explanations based on your experience.</p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-st.markdown("")
+st.write("")
+
+# --------------------------------------------------
+# CODE EDITOR
+# --------------------------------------------------
 st.markdown(
-    '<div class="section-title">⌨️ Your code</div>',
+    '<p class="section-label">01 / YOUR CODE</p>',
     unsafe_allow_html=True,
 )
 
-# --------------------------------------------------
-# CODE INPUT
-# --------------------------------------------------
+editor_col, info_col = st.columns([3, 1])
 
-if "code_input" not in st.session_state:
-    st.session_state.code_input = ""
+with editor_col:
+    st.subheader(f"✍️ {language} Editor")
+    st.caption(
+        "Edit the example or replace it with your own code."
+    )
 
-if "explanation" not in st.session_state:
-    st.session_state.explanation = ""
+    # Use Streamlit's built-in editor for a stable, dependency-light experience.
+    editor_key = f"code_editor_{language}"
+    if editor_key not in st.session_state:
+        st.session_state[editor_key] = SAMPLE_CODE[language]
 
-if "last_code" not in st.session_state:
-    st.session_state.last_code = ""
+    code = st.text_area(
+        "Code",
+        key=editor_key,
+        height=360,
+        placeholder="Write or paste your code here...",
+        label_visibility="collapsed",
+    )
 
-if "last_language" not in st.session_state:
-    st.session_state.last_language = language
+with info_col:
+    st.markdown("### Editor features")
+    st.markdown(
+        """
+        - **Simple, reliable editor**
+        - **Editable sample code**
+        - **Paste your own code**
+        - **Multiple languages** supported
+        - **AI complexity analysis**
+        """
+    )
 
-button_col1, button_col2 = st.columns([1, 4])
+    st.info(
+        f"Language: {language}\n\n"
+        f"Explanation: {level}"
+    )
 
-with button_col1:
-    if st.button("✨ Load sample", use_container_width=True):
-        st.session_state.code_input = EXAMPLES[language]
-        st.session_state.explanation = ""
-        st.session_state.last_code = ""
-        st.rerun()
+    st.caption(
+        "CodePilot explains code but does not execute it."
+    )
 
-with button_col2:
-    if st.button("🗑️ Clear", use_container_width=True):
-        st.session_state.code_input = ""
-        st.session_state.explanation = ""
-        st.session_state.last_code = ""
-        st.rerun()
+code = code or ""
 
-code = st.text_area(
-    "Paste or write your code below",
-    key="code_input",
-    height=300,
-    placeholder="Paste your code here...",
-    label_visibility="collapsed",
-)
+st.write("")
 
-# --------------------------------------------------
-# PROMPT BUILDER
-# --------------------------------------------------
+explain_col, clear_col = st.columns([3, 1])
 
-def build_prompt(source_code, programming_language, explanation_level):
-    level_instructions = {
-        "Beginner": (
-            "Assume the reader is new to programming. "
-            "Use simple language, define technical terms, "
-            "and include small examples."
-        ),
-        "Intermediate": (
-            "Explain the logic clearly, including important "
-            "programming concepts and control flow."
-        ),
-        "Advanced": (
-            "Discuss implementation details, edge cases, "
-            "trade-offs, and relevant optimizations."
-        ),
-        "Interview Preparation": (
-            "Explain the algorithm, important concepts, "
-            "time and space complexity where applicable, "
-            "and likely interview questions with answers."
-        ),
-    }
+with explain_col:
+    explain_clicked = st.button(
+        "✨ Explain my code",
+        type="primary",
+        use_container_width=True,
+    )
 
-    return f"""
-You are CodePilot AI, a careful programming tutor.
-
-Programming language: {programming_language}
-Explanation level: {explanation_level}
-
-Explain the supplied code using this structure:
-
-1. **Overview**
-   Summarize what the program does.
-
-2. **Step-by-step explanation**
-   Explain important lines or blocks in execution order.
-   Refer to the actual code. Do not invent line numbers.
-
-3. **Important concepts**
-   Explain relevant variables, functions, loops,
-   conditions, data structures, or algorithms.
-
-4. **Example walkthrough**
-   Trace the code with a small input when possible.
-   Show how important values change.
-
-5. **Expected output**
-   State the expected output if it can be determined.
-   Explain that output briefly.
-
-6. **Complexity**
-   Explain time and space complexity when meaningful.
-   If not applicable or uncertain, say so.
-
-7. **Potential issues**
-   Mention relevant edge cases or likely errors.
-   Do not invent problems that are not present.
-
-Instructions:
-- {level_instructions[explanation_level]}
-- Be accurate and beginner-friendly where appropriate.
-- Use Markdown headings, lists, and code formatting.
-- If the code is incomplete, explain what is missing.
-- If the language is uncertain, mention that.
-- Never claim you executed the code unless you actually did.
-
-CODE TO EXPLAIN:
-
-```{programming_language.lower()}
-{source_code}
-```
-"""
-
+with clear_col:
+    st.button(
+        "🗑️ Clear editor",
+        use_container_width=True,
+        on_click=clear_editor,
+        args=(editor_key,),
+    )
 
 # --------------------------------------------------
-# GENERATE EXPLANATION
+# AI EXPLANATION
 # --------------------------------------------------
-
-st.markdown("")
-
-if st.button(
-    "✨ Explain my code",
-    type="primary",
-    use_container_width=True,
-):
+if explain_clicked:
     if not code.strip():
-        st.warning("Please enter some code first.")
+        st.warning("Please enter some code before requesting an explanation.")
+
+    elif len(code) > 20000:
+        st.warning(
+            "This code is too long for this demo. "
+            "Please keep it under 20,000 characters."
+        )
 
     else:
         api_key = get_api_key()
 
         if not api_key:
             st.error(
-                "The AI API key is not configured. "
-                "Add GROQ_API_KEY to Streamlit Secrets "
-                "before using the app."
+                "Groq API key not found. Add GROQ_API_KEY "
+                "to Streamlit Secrets or your local environment."
             )
+
         else:
-            prompt = build_prompt(code, language, level)
+            client = OpenAI(
+                api_key=api_key,
+                base_url="https://api.groq.com/openai/v1",
+                timeout=120.0,
+            )
+
+            prompt = f"""
+You are CodePilot AI, a patient and accurate programming tutor.
+
+Explain the following {language} code for a {level.lower()} programmer.
+
+Structure your response with these sections:
+
+1. **Overview** — what the program does.
+2. **Step-by-step explanation** — explain the code in its execution order.
+3. **Important concepts** — describe relevant syntax, functions,
+   variables, loops, conditions, classes, or algorithms.
+4. **Example walkthrough** — trace the code with sample values when
+   possible. Clearly state any assumptions.
+5. **Output** — describe the expected output if it can be determined.
+   Do not claim you executed the code.
+6. **Time complexity** — give the Big-O time complexity, such as O(1),
+   O(n), O(n log n), or O(n^2), and explain which operations, loops,
+   recursion, or algorithmic steps determine it. State best, average,
+   or worst case when relevant.
+7. **Space complexity** — give the auxiliary space complexity in Big-O
+   notation and explain the extra memory used. Account for recursion
+   stack space and additional data structures. Clarify when input storage
+   is excluded from auxiliary space.
+8. **Assumptions and confidence** — state any assumptions about input size
+   or data structures. If the snippet is incomplete or complexity cannot
+   be determined reliably, say so rather than guessing. Do not claim you
+   measured complexity by running the code.
+9. **Key takeaways** — summarize what the learner should remember.
+
+Use clear Markdown headings and code formatting.
+Adapt the depth and terminology to the requested experience level.
+If the code has an apparent error, point it out carefully rather
+than silently assuming it works.
+Do not invent program behavior that cannot be inferred from the code.
+
+Programming language: {language}
+Requested level: {level}
+
+Code to explain:
+
+```{language.lower()}
+{code}
+```
+"""
 
             try:
-                with st.spinner("Analyzing your code..."):
-                    client = OpenAI(
-                        api_key=api_key,
-                        base_url="https://api.groq.com/openai/v1",
-                        timeout=120.0,
-                    )
-
+                with st.spinner(
+                    "CodePilot is analyzing your code..."
+                ):
                     response = client.chat.completions.create(
                         model=MODEL,
                         messages=[
                             {
                                 "role": "system",
                                 "content": (
-                                    "You are CodePilot AI, a helpful "
-                                    "and accurate programming tutor."
+                                    "You are a helpful, precise programming "
+                                    "teacher. Explain code accurately and "
+                                    "never claim to execute code."
                                 ),
                             },
                             {
@@ -476,70 +460,72 @@ if st.button(
                         max_tokens=4000,
                     )
 
-                    result = response.choices[0].message.content
+                    explanation = (
+                        response.choices[0].message.content or ""
+                    )
 
-                    if not result:
-                        st.error(
-                            "The AI returned an empty response. "
-                            "Please try again."
-                        )
-                    else:
-                        st.session_state.explanation = result
-                        st.session_state.last_code = code
-                        st.session_state.last_language = language
+                if explanation.strip():
+                    st.session_state["last_explanation"] = explanation
+                    st.session_state["last_explained_code"] = code
+                    st.session_state["last_language"] = language
+                    st.session_state["last_level"] = level
+                else:
+                    st.warning(
+                        "The AI returned an empty explanation. Please try again."
+                    )
 
             except Exception as error:
                 st.error(
-                    "Sorry, the AI request failed. "
-                    "Please check your API key, internet connection, "
-                    "model availability, and API usage limits."
+                    "Unable to generate the explanation. "
+                    "Please try again in a moment."
                 )
-                with st.expander("Technical details"):
-                    st.code(str(error))
-
+                st.caption(
+                    f"Technical details: {type(error).__name__}: {error}"
+                )
 
 # --------------------------------------------------
-# DISPLAY RESULTS
+# DISPLAY SAVED EXPLANATION AND DOWNLOAD
 # --------------------------------------------------
-
-if st.session_state.explanation:
+if st.session_state.get("last_explanation"):
     st.divider()
 
     st.markdown(
-        '<div class="section-title">📖 Code explanation</div>',
+        '<p class="section-label">02 / YOUR EXPLANATION</p>',
         unsafe_allow_html=True,
     )
 
-    st.markdown(
-        '<div class="result-card">',
-        unsafe_allow_html=True,
-    )
+    st.subheader("🧠 Code explanation")
 
-    st.markdown(st.session_state.explanation)
+    st.markdown(st.session_state["last_explanation"])
 
-    st.markdown("</div>", unsafe_allow_html=True)
+    explanation_markdown = f"""# CodePilot AI — Code Explanation
 
-    download_text = (
-        "# CodePilot AI — Code Explanation\n\n"
-        f"**Language:** {st.session_state.last_language}\n\n"
-        f"## Original code\n\n"
-        f"```{st.session_state.last_language.lower()}\n"
-        f"{st.session_state.last_code}\n"
-        f"```\n\n"
-        f"## Explanation\n\n"
-        f"{st.session_state.explanation}\n"
-    )
+**Language:** {st.session_state.get("last_language", language)}
+
+**Explanation level:** {st.session_state.get("last_level", level)}
+
+## Source code
+
+```{st.session_state.get("last_language", language).lower()}
+{st.session_state.get("last_explained_code", "")}
+```
+
+## Explanation
+
+{st.session_state["last_explanation"]}
+"""
 
     st.download_button(
-        label="⬇️ Download explanation",
-        data=download_text,
+        label="⬇️ Download explanation as Markdown",
+        data=explanation_markdown,
         file_name="code_explanation.md",
         mime="text/markdown",
-        use_container_width=True,
     )
 
+# --------------------------------------------------
+# FOOTER
+# --------------------------------------------------
 st.divider()
-
 st.caption(
-    "CodePilot AI • Review AI-generated explanations before relying on them."
+    "CodePilot AI • Learn, understand, and explore code with AI."
 )
