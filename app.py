@@ -225,8 +225,7 @@ with st.sidebar:
     st.caption("• Use Tab to indent your code.")
     st.caption("• Click Explain my code when ready.")
 
-    st.divider()
-    st.caption("Powered by Groq")
+    
 
 
 # --------------------------------------------------
